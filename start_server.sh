@@ -1,44 +1,39 @@
-#!/bin/bash
-# This script starts the server up and brings it back up
-# in the case that it crashes/goes down.
-# This script needs to be updated when changing the server to a newer version.
+#!/usr/bin/env bash
+# start_server.sh — launch & auto-restart your Minecraft server in a detached screen.
 
-LOG_FILE=~/server/scripts/start_server.log
+set -euo pipefail
+
+LOG_FILE="$HOME/server/scripts/start_server.log"
+RESTART_FLAG="$HOME/server/scripts/restart.txt"
+SCREEN_NAME="minecraftserver"
+SERVER_DIR="$HOME/server"
+JAR="server.jar"
+JAVA_HOME="/usr/lib/jvm/jdk-23.0.1"
+
+export PATH="$JAVA_HOME/bin:$PATH"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
-server_command() {
-    screen -S minecraftserver -X stuff "$1"
+# ensure restart flag exists
+echo "true" > "$RESTART_FLAG"
+
+start_minecraft() {
+  echo "[`date`] Starting server…" 
+  screen -dmS "$SCREEN_NAME" bash -c "cd '$SERVER_DIR' && exec bash"
+  sleep 2
+  screen -S "$SCREEN_NAME" -p 0 -X stuff "java -Xms6G -Xmx6G -jar $JAR nogui$(printf \\r)"
 }
 
-export PATH='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'
+# initial launch
+start_minecraft
 
-JAVA_HOME='/usr/lib/jvm/jdk-23.0.1'
-export PATH="$PATH:$JAVA_HOME/bin"
+# monitor loop
+while true; do
+  sleep 60
+  RUNNING=$(pgrep -f "java .*${JAR}" || true)
+  WANT_RESTART=$(<"$RESTART_FLAG")
 
-export SCREENDIR="$HOME/.screen"
-
-START_SERVER="java -Xms6G -Xmx6G -jar server.jar nogui\n"
-
-# Set restart flag to true
-sed -i "1s/.*/true/" ~/server/scripts/restart.txt
-
-# Start a detached screen session named minecraftserver
-screen -dmS minecraftserver bash -c 'cd ~/server && exec bash'
-
-# Wait a moment to ensure the screen session is ready
-sleep 2
-
-# Send the start server command
-server_command "$START_SERVER"
-
-# Monitor the server
-while true 
-do
-    sleep 1m
-    C=$(pgrep -f server.jar | wc -l)
-    read -r RESTART < ~/server/scripts/restart.txt
-    if [ "$C" == "true" ] && [ "$RESTART" == "true" ]; then
-        echo "Server is down or not running. Attempting to restart..."
-        server_command "$START_SERVER"
-    fi	
+  if [[ -z "$RUNNING" && "$WANT_RESTART" == "true" ]]; then
+    echo "[`date`] Detected crash — restarting…" 
+    start_minecraft
+  fi
 done

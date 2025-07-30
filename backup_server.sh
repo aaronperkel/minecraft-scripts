@@ -1,29 +1,30 @@
-#!/bin/bash
-# backup_server.sh
-# Saves and backs up the entire ~/server folder without overwriting existing backups.
+#!/usr/bin/env bash
+# backup_server.sh — snapshot the whole server (~/server) without overwriting past backups.
 
-# Function to send commands to the Minecraft server
+set -euo pipefail
+
+# CONFIG
+BACKUP_DIR="$HOME/backups"
+SERVER_DIR="$HOME/server"
+SCREEN_NAME="minecraftserver"
+
+# send a command into the Minecraft screen session
 server_command() {
-    screen -S minecraftserver -p 0 -X stuff "$1$(printf \\r)"
+  screen -S "$SCREEN_NAME" -p 0 -X stuff "$1$(printf \\r)"
 }
 
-# Commands to save the server and notify players
-SAVE_COMMAND="save-all flush"
-START_MESSAGE="say Starting server backup..."
-END_MESSAGE="say Finished server backup."
-
-# Create a timestamp for the backup filename (e.g., 20250123-0352)
+# prepare
+mkdir -p "$BACKUP_DIR"
 TIMESTAMP=$(date +%Y%m%d-%H%M)
+TARGET_DIR="${BACKUP_DIR}/server_backup_${TIMESTAMP}"
 
-# Backup directory
-BACKUP_DIR=~/backups
-
-# Perform the backup
-server_command "$START_MESSAGE"
-server_command "$SAVE_COMMAND"
+# notify & save
+server_command "say [Backup] starting…" 
+server_command "say save-all flush"
 sleep 5
 
-# Create a unique backup directory with the timestamp
-cp -r ~/server "${BACKUP_DIR}/server_backup_${TIMESTAMP}"
+# copy
+cp -a "$SERVER_DIR" "$TARGET_DIR"
 
-server_command "$END_MESSAGE"
+# notify done (no emojis)
+server_command "say [Backup] finished! Saved to ${TARGET_DIR}"

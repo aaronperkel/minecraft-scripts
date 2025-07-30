@@ -1,35 +1,31 @@
-#!/bin/bash
-# backup_world.sh
-# Saves and backs up only the ~/server/world folder, overwriting last week's backup for the same day.
+#!/usr/bin/env bash
+# backup_world.sh — rotate a weekly backup of just the world folder (~/server/world).
 
-# Function to send commands to the Minecraft server
+set -euo pipefail
+
+# CONFIG
+BACKUP_DIR="$HOME/backups"
+WORLD_DIR="$HOME/server/world"
+SCREEN_NAME="minecraftserver"
+
+# helper
 server_command() {
-    screen -S minecraftserver -p 0 -X stuff "$1$(printf \\r)"
+  screen -S "$SCREEN_NAME" -p 0 -X stuff "$1$(printf \\r)"
 }
 
-# Commands to save the world and notify players
-SAVE_COMMAND="save-all flush"
-START_MESSAGE="say Starting world backup..."
-END_MESSAGE="say Finished world backup."
+# prepare
+mkdir -p "$BACKUP_DIR"
+DAY=$(date +%A)
+TARGET="${BACKUP_DIR}/world_backup_${DAY}"
 
-# Get the current day of the week (e.g., Monday)
-DAY_OF_WEEK=$(date +%A)
-
-# Define the backup filename based on the day
-BACKUP_FILENAME="world_backup_${DAY_OF_WEEK}"
-
-# Backup directory
-BACKUP_DIR=~/backups
-
-# Perform the backup
-server_command "$START_MESSAGE"
-server_command "$SAVE_COMMAND"
+# notify & save
+server_command "say [World Backup] starting…" 
+server_command "say save-all flush"
 sleep 5
 
-# Remove the old backup for the day if it exists
-rm -rf "${BACKUP_DIR}/${BACKUP_FILENAME}"
+# rotate
+rm -rf "$TARGET"
+cp -a "$WORLD_DIR" "$TARGET"
 
-# Copy the world folder to the backup location
-cp -r ~/server/world "${BACKUP_DIR}/${BACKUP_FILENAME}"
-
-server_command "$END_MESSAGE"
+# notify done (no emojis)
+server_command "say [World Backup] done! Saved to ${TARGET}"
