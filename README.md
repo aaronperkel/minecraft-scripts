@@ -30,9 +30,9 @@ A collection of helper scripts to manage your Minecraft server.
 
 ## Example Cron Jobs
 ```bash
-# full backup daily at 3:30 AM
-30 3 * * * /home/youruser/server/scripts/backup_server.sh
+# world backup daily at 3:30 AM
+30 3 * * * /home/youruser/server/scripts/backup_world.sh
 
-# world backup every Monday at 4 AM
-0 4 * * 1 /home/youruser/server/scripts/backup_world.sh
+# full server backup every Monday at 4 AM
+0 4 * * 1 /home/youruser/server/scripts/backup_server.sh
 ```
